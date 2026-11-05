@@ -1,11 +1,13 @@
 from __future__ import annotations
-import sys, os, json, uuid, subprocess, threading, traceback, re, shutil, urllib.request
+import sys, os, json, uuid, subprocess, threading, traceback, re, shutil, urllib.request, tempfile, hashlib, zipfile
 from pathlib import Path
 from PySide6.QtCore import Qt, Signal, QObject, QTimer
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import *
 
 APP_NAME = "AetherLauncher"
+APP_VERSION = "0.4.1"
+GITHUB_LATEST_API = "https://api.github.com/repos/noa123456789/AetherLauncher/releases/latest"
 BASE = Path(os.environ.get("APPDATA", str(Path.home()))) / APP_NAME
 GAME_DIR = BASE / ".minecraft"
 CONFIG = BASE / "config.json"
@@ -103,6 +105,9 @@ class Launcher(QMainWindow):
         self.top_status=QLabel("●  READY"); self.top_status.setStyleSheet("color:#7fe0a0;font-weight:800")
         tl.addWidget(self.top_status); tl.addStretch()
         self.top_version=QLabel("JAVA EDITION  •  26.3"); self.top_version.setObjectName("muted"); tl.addWidget(self.top_version)
+        self.update_btn=QPushButton("↻  Controleer updates")
+        self.update_btn.clicked.connect(self.check_updates)
+        tl.addWidget(self.update_btn)
         cv.addWidget(top); cv.addWidget(self.stack,1); outer.addWidget(content,1)
         self.stack.addWidget(self.home_page()); self.stack.addWidget(self.java_page())
         self.stack.addWidget(self.bedrock_page()); self.stack.addWidget(self.settings_page())
@@ -131,6 +136,11 @@ class Launcher(QMainWindow):
             a=QLabel(label); a.setObjectName("muted"); b=QLabel(value); b.setStyleSheet("font-size:19px;font-weight:800"); d=QLabel(sub); d.setObjectName("muted")
             v.addWidget(a); v.addWidget(b); v.addWidget(d); row.addWidget(c)
         l.addLayout(row)
+        update_panel=self.panel(); uv=QHBoxLayout(update_panel); uv.setContentsMargins(18,13,18,13)
+        self.update_info=QLabel(f"AetherLauncher v{APP_VERSION}  •  Automatische updatecontrole via GitHub")
+        self.update_info.setObjectName("muted"); uv.addWidget(self.update_info,1)
+        self.home_update=QPushButton("Controleer updates"); self.home_update.clicked.connect(self.check_updates); uv.addWidget(self.home_update)
+        l.addWidget(update_panel)
         activity=QLabel("RECENTE ACTIVITEIT"); activity.setObjectName("section"); l.addWidget(activity)
         self.logs=QTextEdit(); self.logs.setReadOnly(True); self.logs.setMaximumHeight(125); l.addWidget(self.logs)
         self.progress=QProgressBar(); self.progress.setRange(0,100); self.progress.setValue(0); l.addWidget(self.progress)
@@ -187,6 +197,113 @@ class Launcher(QMainWindow):
         if hasattr(self,"logs"): self.logs.append(str(msg))
     def update_profile(self):
         self.profile_label.setText(f"◉  {self.cfg.get('username','Player')}\\nOffline Java profile")
+
+    def check_updates(self):
+        self.update_btn.setEnabled(False)
+        self.home_update.setEnabled(False)
+        self.update_info.setText("Controleert GitHub Releases…")
+        def work(log,progress):
+            req=urllib.request.Request(GITHUB_LATEST_API,headers={
+                "Accept":"application/vnd.github+json",
+                "User-Agent":"AetherLauncher-Updater",
+                "X-GitHub-Api-Version":"2022-11-28"})
+            with urllib.request.urlopen(req,timeout=15) as response:
+                release=json.loads(response.read().decode("utf-8"))
+            latest=release.get("tag_name","").strip().lstrip("v")
+            if not latest:
+                raise RuntimeError("GitHub-release bevat geen tag_name.")
+            if self.version_tuple(latest) <= self.version_tuple(APP_VERSION):
+                return json.dumps({"state":"current","latest":latest,"url":release.get("html_url","")})
+            assets=release.get("assets",[])
+            zip_asset=next((a for a in assets if a.get("name","").lower().endswith(".zip")),None)
+            if not zip_asset:
+                return json.dumps({"state":"available","latest":latest,"url":release.get("html_url",""),
+                                   "message":"Er is een update, maar de release heeft nog geen ZIP-bestand."})
+            return json.dumps({"state":"available","latest":latest,"url":release.get("html_url",""),
+                               "asset":zip_asset.get("browser_download_url",""),
+                               "asset_name":zip_asset.get("name",""),
+                               "digest":zip_asset.get("digest") or ""})
+        def finished(ok,msg):
+            self.update_btn.setEnabled(True); self.home_update.setEnabled(True)
+            if not ok:
+                self.update_info.setText("Updatecontrole mislukt.")
+                QMessageBox.warning(self,"Updatecontrole mislukt",msg); return
+            try: result=json.loads(msg)
+            except Exception:
+                self.update_info.setText(msg); return
+            if result["state"]=="current":
+                self.update_info.setText(f"Je gebruikt de nieuwste versie (v{APP_VERSION}).")
+                QMessageBox.information(self,"Geen update",f"AetherLauncher v{APP_VERSION} is up-to-date.")
+            else:
+                self.update_info.setText(f"Update beschikbaar: v{result['latest']}")
+                if not result.get("asset"):
+                    QMessageBox.information(self,"Update beschikbaar",
+                        f"Versie v{result['latest']} is beschikbaar, maar er staat nog geen ZIP-bestand bij de release.\\n\\n{result.get('url','')}")
+                else:
+                    answer=QMessageBox.question(self,"Update beschikbaar",
+                        f"AetherLauncher v{result['latest']} is beschikbaar.\\n\\nWil je de update downloaden en installeren?",
+                        QMessageBox.Yes|QMessageBox.No,QMessageBox.Yes)
+                    if answer==QMessageBox.Yes:
+                        self.download_and_install_update(result)
+        self._update_task=BackgroundTask(work)
+        self._update_task.signals.finished.connect(finished)
+        self._update_task.signals.log.connect(self.log)
+        self._update_task.start()
+
+    @staticmethod
+    def version_tuple(value):
+        nums=re.findall(r"\d+",str(value))
+        return tuple(int(x) for x in nums) if nums else (0,)
+
+    def download_and_install_update(self,release):
+        if not release.get("asset"):
+            return
+        self.update_btn.setEnabled(False); self.home_update.setEnabled(False)
+        self.update_info.setText("Update wordt gedownload…")
+        def work(log,progress):
+            url=release["asset"]
+            req=urllib.request.Request(url,headers={"User-Agent":"AetherLauncher-Updater"})
+            with urllib.request.urlopen(req,timeout=60) as response:
+                data=response.read()
+            if not data.startswith(b"PK"):
+                raise RuntimeError("GitHub-download is geen geldig ZIP-bestand.")
+            digest=release.get("digest","")
+            if digest.startswith("sha256:"):
+                actual=hashlib.sha256(data).hexdigest()
+                if actual.lower()!=digest.split(":",1)[1].lower():
+                    raise RuntimeError("SHA-256-controle mislukt. Update geweigerd.")
+            temp_dir=Path(tempfile.mkdtemp(prefix="aether-update-"))
+            archive=temp_dir/"update.zip"; archive.write_bytes(data)
+            extract=temp_dir/"extracted"; extract.mkdir()
+            with zipfile.ZipFile(archive) as zf:
+                for item in zf.infolist():
+                    target=(extract/item.filename).resolve()
+                    if not str(target).startswith(str(extract.resolve())+os.sep):
+                        raise RuntimeError("Onveilig bestandspad in updatepakket.")
+                zf.extractall(extract)
+            # Locate the application folder in common GitHub ZIP/package layouts.
+            candidates=[p for p in extract.rglob("main.py") if p.is_file()]
+            if not candidates:
+                raise RuntimeError("Geen main.py gevonden in het updatepakket.")
+            source=candidates[0].parent
+            install_dir=Path(__file__).resolve().parent
+            updater=install_dir/"apply_update.py"
+            log("Update gedownload en gecontroleerd. Updater wordt gestart…")
+            subprocess.Popen([sys.executable,str(updater),str(source),str(install_dir),str(archive)],
+                             cwd=str(install_dir),close_fds=True)
+            return "Updater gestart. AetherLauncher wordt afgesloten om de bestanden te vervangen."
+        def done(ok,msg):
+            self.update_btn.setEnabled(True); self.home_update.setEnabled(True)
+            if ok:
+                QMessageBox.information(self,"Updater gestart",msg)
+                QApplication.quit()
+            else:
+                self.update_info.setText("Update installeren is mislukt.")
+                QMessageBox.critical(self,"Update mislukt",msg)
+        self._install_task=BackgroundTask(work)
+        self._install_task.signals.finished.connect(done)
+        self._install_task.start()
+
     def choose_java(self):
         p,_=QFileDialog.getOpenFileName(self,"Kies Java 25","", "Java executable (java.exe)")
         if p: self.java.setText(p)
