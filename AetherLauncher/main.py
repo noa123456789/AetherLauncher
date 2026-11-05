@@ -6,7 +6,7 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import *
 
 APP_NAME = "AetherLauncher"
-APP_VERSION = "0.4.1"
+APP_VERSION = "0.4.2"
 GITHUB_LATEST_API = "https://api.github.com/repos/noa123456789/AetherLauncher/releases/latest"
 BASE = Path(os.environ.get("APPDATA", str(Path.home()))) / APP_NAME
 GAME_DIR = BASE / ".minecraft"
@@ -61,31 +61,38 @@ class Launcher(QMainWindow):
         BASE.mkdir(parents=True,exist_ok=True)
         self.cfg=read_config(); self.task=None
         self.setWindowTitle("AetherLauncher")
-        self.setMinimumSize(1080,700); self.resize(1280,820)
+        self.setMinimumSize(1120,720); self.resize(1360,860)
         self.setStyleSheet("""
-        QWidget{font-family:'Segoe UI';color:#f4f1ff;background:#0b0b12;font-size:13px}
-        QFrame#sidebar{background:#10101a;border-right:1px solid #252337}
-        QLabel#brand{font-size:25px;font-weight:900;color:#c5a7ff;letter-spacing:2px}
-        QLabel#muted{color:#9693aa}
-        QLabel#pageTitle{font-size:29px;font-weight:800;color:#fff}
-        QLabel#section{font-size:16px;font-weight:750;color:#f4f1ff}
-        QFrame#panel{background:#151522;border:1px solid #29283d;border-radius:17px}
-        QFrame#hero{background:#201a35;border:1px solid #4a386c;border-radius:22px}
-        QPushButton{background:#211f30;border:1px solid #37334d;border-radius:10px;padding:11px 15px;font-weight:650}
-        QPushButton:hover{background:#302744;border-color:#a887ff}
-        QPushButton#primary{background:#895cf6;border:0;color:white;font-size:15px;font-weight:800;padding:15px 20px}
-        QPushButton#primary:hover{background:#a078ff}
-        QPushButton#nav{background:transparent;border:0;text-align:left;padding:14px 15px;color:#aaa6bd;font-size:14px}
-        QPushButton#nav:checked{background:#28213a;color:#d5c1ff;border-left:3px solid #a27aff}
-        QLineEdit,QComboBox,QSpinBox{background:#0e0e18;border:1px solid #343149;border-radius:9px;padding:10px;color:#fff;selection-background-color:#895cf6}
-        QTextEdit{background:#090910;border:1px solid #29283d;border-radius:10px;color:#b9e8c5;font-family:Consolas;font-size:12px;padding:8px}
-        QProgressBar{background:#0e0e18;border:0;border-radius:5px;height:9px;text-align:center}
-        QProgressBar::chunk{background:#9b75ff;border-radius:5px}
+        QWidget{font-family:'Segoe UI';color:#f5f2ff;background:#090910;font-size:13px}
+        QMainWindow{background:#090910}
+        QFrame#sidebar{background:#0e0d17;border-right:1px solid #252238}
+        QLabel#brand{font-size:27px;font-weight:950;color:#d0baff;letter-spacing:2px}
+        QLabel#muted{color:#9995ae}
+        QLabel#pageTitle{font-size:31px;font-weight:850;color:#fff}
+        QLabel#section{font-size:16px;font-weight:800;color:#f4f1ff}
+        QLabel#eyebrow{font-size:11px;font-weight:900;letter-spacing:2px;color:#c6aaff}
+        QLabel#metric{font-size:23px;font-weight:900;color:#fff}
+        QFrame#panel{background:#141321;border:1px solid #2b2940;border-radius:18px}
+        QFrame#hero{background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #241a3b,stop:0.55 #1a1730,stop:1 #111323);border:1px solid #514071;border-radius:23px}
+        QFrame#miniPanel{background:#11111d;border:1px solid #29273b;border-radius:15px}
+        QPushButton{background:#211f30;border:1px solid #393550;border-radius:11px;padding:11px 16px;font-weight:700}
+        QPushButton:hover{background:#342a4d;border-color:#aa8cff}
+        QPushButton:disabled{color:#777387;background:#191824;border-color:#292638}
+        QPushButton#primary{background:qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #8a5cf6,stop:1 #6845d5);border:0;color:white;font-size:15px;font-weight:900;padding:16px 23px}
+        QPushButton#primary:hover{background:#a17cff}
+        QPushButton#nav{background:transparent;border:0;text-align:left;padding:15px 16px;color:#aaa6bd;font-size:14px}
+        QPushButton#nav:checked{background:#28213b;color:#dfd1ff;border-left:3px solid #a987ff}
+        QLineEdit,QComboBox,QSpinBox{background:#0c0b14;border:1px solid #39354f;border-radius:10px;padding:11px;color:#fff;selection-background-color:#895cf6}
+        QLineEdit:focus,QComboBox:focus,QSpinBox:focus{border:1px solid #9c79f4}
+        QTextEdit{background:#090910;border:1px solid #29283d;border-radius:12px;color:#b9e8c5;font-family:Consolas;font-size:12px;padding:9px}
+        QProgressBar{background:#0e0d18;border:0;border-radius:5px;height:10px;text-align:center}
+        QProgressBar::chunk{background:qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #9e75ff,stop:1 #6e51d9);border-radius:5px}
         QScrollBar:vertical{background:#10101a;width:8px} QScrollBar::handle:vertical{background:#40365c;border-radius:4px}
+        QStatusBar{background:#0d0c15;color:#9995ae;border-top:1px solid #252238}
         """)
         central=QWidget(); self.setCentralWidget(central)
         outer=QHBoxLayout(central); outer.setContentsMargins(0,0,0,0); outer.setSpacing(0)
-        side=QFrame(); side.setObjectName("sidebar"); side.setFixedWidth(232)
+        side=QFrame(); side.setObjectName("sidebar"); side.setFixedWidth(248)
         sv=QVBoxLayout(side); sv.setContentsMargins(18,27,18,20); sv.setSpacing(7)
         brand=QLabel("✦ AETHER"); brand.setObjectName("brand"); sv.addWidget(brand)
         tagline=QLabel("MINECRAFT LAUNCHER"); tagline.setObjectName("muted"); sv.addWidget(tagline)
@@ -104,7 +111,7 @@ class Launcher(QMainWindow):
         tl=QHBoxLayout(top); tl.setContentsMargins(28,0,28,0)
         self.top_status=QLabel("●  READY"); self.top_status.setStyleSheet("color:#7fe0a0;font-weight:800")
         tl.addWidget(self.top_status); tl.addStretch()
-        self.top_version=QLabel("JAVA EDITION  •  26.3"); self.top_version.setObjectName("muted"); tl.addWidget(self.top_version)
+        self.top_version=QLabel(f"AETHERLAUNCHER  •  v{APP_VERSION}"); self.top_version.setObjectName("muted"); tl.addWidget(self.top_version)
         self.update_btn=QPushButton("↻  Controleer updates")
         self.update_btn.clicked.connect(self.check_updates)
         tl.addWidget(self.update_btn)
@@ -120,31 +127,46 @@ class Launcher(QMainWindow):
         box=QVBoxLayout(); a=QLabel(title); a.setObjectName("pageTitle"); b=QLabel(sub); b.setObjectName("muted")
         box.addWidget(a); box.addWidget(b); return box
     def home_page(self):
-        w=QWidget(); l=QVBoxLayout(w); l.setContentsMargins(34,27,34,25); l.setSpacing(19)
-        l.addLayout(self.heading("Welkom terug.","Alles klaar voor je volgende avontuur?"))
-        hero=QFrame(); hero.setObjectName("hero"); h=QHBoxLayout(hero); h.setContentsMargins(30,27,30,27)
-        left=QVBoxLayout(); tag=QLabel("✦  AETHERSMP NETWORK"); tag.setStyleSheet("color:#c4a8ff;font-weight:800;letter-spacing:1px")
-        title=QLabel("Jouw wereld.\nJouw avontuur."); title.setStyleSheet("font-size:37px;font-weight:900;line-height:1.2")
-        desc=QLabel("Start Minecraft Java 26.3 en spring direct naar AetherSMP."); desc.setObjectName("muted")
-        self.home_play=QPushButton("▶   SPEEL NU"); self.home_play.setObjectName("primary"); self.home_play.clicked.connect(self.launch_java)
-        left.addWidget(tag); left.addSpacing(8); left.addWidget(title); left.addWidget(desc); left.addSpacing(17); left.addWidget(self.home_play,0,Qt.AlignLeft); left.addStretch()
-        right=QVBoxLayout(); emblem=QLabel("✦"); emblem.setAlignment(Qt.AlignCenter); emblem.setStyleSheet("font-size:150px;color:#b99aff;background:#2b2143;border:1px solid #584477;border-radius:24px")
-        right.addWidget(emblem); h.addLayout(left,3); h.addLayout(right,2); l.addWidget(hero,3)
-        row=QHBoxLayout()
-        for label,value,sub in [("GAME VERSION","26.3","Latest stable release"),("PROFILE",self.cfg["username"],"Offline Java profile"),("SERVER",self.cfg["server_name"],self.cfg["server_host"])]:
-            c=self.panel(); v=QVBoxLayout(c); v.setContentsMargins(18,15,18,15)
-            a=QLabel(label); a.setObjectName("muted"); b=QLabel(value); b.setStyleSheet("font-size:19px;font-weight:800"); d=QLabel(sub); d.setObjectName("muted")
-            v.addWidget(a); v.addWidget(b); v.addWidget(d); row.addWidget(c)
-        l.addLayout(row)
-        update_panel=self.panel(); uv=QHBoxLayout(update_panel); uv.setContentsMargins(18,13,18,13)
-        self.update_info=QLabel(f"AetherLauncher v{APP_VERSION}  •  Automatische updatecontrole via GitHub")
-        self.update_info.setObjectName("muted"); uv.addWidget(self.update_info,1)
-        self.home_update=QPushButton("Controleer updates"); self.home_update.clicked.connect(self.check_updates); uv.addWidget(self.home_update)
-        l.addWidget(update_panel)
-        activity=QLabel("RECENTE ACTIVITEIT"); activity.setObjectName("section"); l.addWidget(activity)
-        self.logs=QTextEdit(); self.logs.setReadOnly(True); self.logs.setMaximumHeight(125); l.addWidget(self.logs)
+        w=QWidget(); l=QVBoxLayout(w); l.setContentsMargins(38,30,38,28); l.setSpacing(20)
+        l.addLayout(self.heading("Welkom terug.","Jouw Minecraft-ervaring begint hier."))
+        hero=QFrame(); hero.setObjectName("hero"); h=QHBoxLayout(hero); h.setContentsMargins(32,29,32,29); h.setSpacing(20)
+        left=QVBoxLayout(); left.setSpacing(9)
+        tag=QLabel("✦  AETHERSMP • COMMUNITY"); tag.setObjectName("eyebrow")
+        title=QLabel("Ready to play?"); title.setStyleSheet("font-size:43px;font-weight:950;color:#fff")
+        desc=QLabel("Start Minecraft Java 26.3 en keer terug naar je wereld."); desc.setObjectName("muted")
+        self.home_play=QPushButton("▶     SPEEL MINECRAFT"); self.home_play.setObjectName("primary"); self.home_play.clicked.connect(self.launch_java)
+        left.addWidget(tag); left.addSpacing(6); left.addWidget(title); left.addWidget(desc); left.addSpacing(15); left.addWidget(self.home_play,0,Qt.AlignLeft); left.addStretch()
+        artbox=QFrame(); artbox.setObjectName("miniPanel"); artbox.setMinimumWidth(230); artbox.setMaximumWidth(300)
+        av=QVBoxLayout(artbox); av.setContentsMargins(18,18,18,18)
+        emblem=QLabel("✦"); emblem.setAlignment(Qt.AlignCenter); emblem.setStyleSheet("font-size:112px;font-weight:200;color:#c5a7ff;background:transparent")
+        world=QLabel("YOUR WORLD AWAITS"); world.setAlignment(Qt.AlignCenter); world.setObjectName("eyebrow")
+        av.addWidget(emblem,1); av.addWidget(world)
+        h.addLayout(left,3); h.addWidget(artbox,2); l.addWidget(hero,3)
+
+        stats=QHBoxLayout(); stats.setSpacing(14)
+        for label,value,detail in [
+            ("GAME VERSION","26.3","Minecraft Java Edition"),
+            ("PLAYER PROFILE",self.cfg.get("username","Player"),"Offline profile"),
+            ("YOUR SERVER",self.cfg.get("server_name","AetherSMP"),self.cfg.get("server_host",""))]:
+            c=QFrame(); c.setObjectName("panel"); v=QVBoxLayout(c); v.setContentsMargins(19,16,19,16); v.setSpacing(5)
+            a=QLabel(label); a.setObjectName("eyebrow"); b=QLabel(value); b.setObjectName("metric"); d=QLabel(detail); d.setObjectName("muted")
+            v.addWidget(a); v.addWidget(b); v.addWidget(d); stats.addWidget(c)
+        l.addLayout(stats)
+
+        lower=QHBoxLayout(); lower.setSpacing(14)
+        activity_panel=self.panel(); av=QVBoxLayout(activity_panel); av.setContentsMargins(18,16,18,16)
+        activity=QLabel("LAUNCHER ACTIVITY"); activity.setObjectName("eyebrow"); av.addWidget(activity)
+        self.logs=QTextEdit(); self.logs.setReadOnly(True); self.logs.setMinimumHeight(112); self.logs.setMaximumHeight(140); av.addWidget(self.logs)
+        update_panel=self.panel(); uv=QVBoxLayout(update_panel); uv.setContentsMargins(20,18,20,18); uv.setSpacing(10)
+        uicon=QLabel("↻"); uicon.setStyleSheet("font-size:34px;color:#c5a7ff;font-weight:800")
+        utitle=QLabel("Launcher up-to-date?"); utitle.setStyleSheet("font-size:17px;font-weight:850")
+        self.update_info=QLabel(f"AetherLauncher v{APP_VERSION}\\nControleer of er een nieuwe versie klaarstaat.")
+        self.update_info.setObjectName("muted"); self.update_info.setWordWrap(True)
+        self.home_update=QPushButton("CONTROLEER UPDATES"); self.home_update.clicked.connect(self.check_updates)
+        uv.addWidget(uicon); uv.addWidget(utitle); uv.addWidget(self.update_info); uv.addStretch(); uv.addWidget(self.home_update)
+        lower.addWidget(activity_panel,3); lower.addWidget(update_panel,2); l.addLayout(lower,2)
         self.progress=QProgressBar(); self.progress.setRange(0,100); self.progress.setValue(0); l.addWidget(self.progress)
-        self.log("AetherLauncher is gestart. Minecraft 26.3 staat geselecteerd.")
+        self.log(f"AetherLauncher v{APP_VERSION} is gestart.")
         return w
 
     def java_page(self):
